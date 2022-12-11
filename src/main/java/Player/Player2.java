@@ -18,8 +18,8 @@ public class Player2 {
     public static int ID;
     public static int myID;
     public static int lenMap;
-    public static String IP = "localhost";
-    public static final int PORT = 8889;
+    public static String IP = "0.tcp.ap.ngrok.io";
+    public static final int PORT = 14345;
     public static final String MSV = "19020292";
     public static final String myPoint = "WHITE";
     public static int blackScore = 0;
@@ -228,7 +228,7 @@ public class Player2 {
         try {
             System.out.println("Client is Connecting....");
             // Lấy ip của máy tĩnh
-            IP = InetAddress.getLocalHost().getHostAddress();
+//            IP = InetAddress.getLocalHost().getHostAddress();
 
             skt = new Socket(IP, PORT);
             System.out.println("Client is Connect");
@@ -251,8 +251,8 @@ public class Player2 {
                     int req = restore(input);
                     board.paint(map);
                     if (req == 1) {
-                        JOptionPane.showMessageDialog(null, "Bạn là Trắng!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
                         os.write(set_pkt(2, 4, convert_data(myID)));
+                        JOptionPane.showMessageDialog(null, "Bạn là Trắng!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
                 else if (type == 3) {

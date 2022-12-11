@@ -18,8 +18,8 @@ public class Player1 {
     public static int ID;
     public static int myID;
     public static int lenMap;
-    public static String IP = "localhost";
-    public static final int PORT = 8889;
+    public static String IP = "0.tcp.ap.ngrok.io";
+    public static final int PORT = 14345;
     public static final String MSV = "19020292";
     public static final String myPoint = "BLACK";
     public static int blackScore = 0;
@@ -228,7 +228,7 @@ public class Player1 {
         try {
             System.out.println("Client is Connecting....");
             // Lấy ip của máy tĩnh
-            IP = InetAddress.getLocalHost().getHostAddress();
+//            IP = InetAddress.getLocalHost().getHostAddress();
 
             skt = new Socket(IP, PORT);
             System.out.println(skt);
@@ -252,8 +252,8 @@ public class Player1 {
                     int req = restore(input);
                     board.paint(map);
                     if (req == 1) {
-                        JOptionPane.showMessageDialog(null, "Bạn là Đen!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
                         os.write(set_pkt(2, 4, convert_data(myID)));
+                        JOptionPane.showMessageDialog(null, "Bạn là Đen!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
                 else if (type == 3) {
@@ -310,13 +310,6 @@ public class Player1 {
                         JOptionPane.showMessageDialog(null, "Hai bên hòa!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
-
-//                try {
-//                    TimeUnit.SECONDS.sleep(1);
-//                }
-//                catch(InterruptedException e) {
-//
-//                }
             }
         } catch (IOException e) {
             System.out.print("Kết nối hỏng");

@@ -6,9 +6,9 @@ import java.io.*;
 
 public class ConnectionHandler {
     public Socket socket;
-    private InputStream in;
-    private OutputStream out;
-    private ServerSocket server;
+    public InputStream in;
+    public OutputStream out;
+    public ServerSocket server;
 
     public ConnectionHandler(ServerSocket serverSocket, Socket socket) {
         try {

@@ -1,17 +1,24 @@
 package ServerWS;
 
 import Board.Board;
-import ServerWS.ConnectionHandler;
-import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.json.simple.parser.JSONParser;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.stream.JsonParsingException;
 import javax.swing.*;
-import java.io.*;
-import java.lang.reflect.Array;
-import java.net.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class Server extends Thread {
@@ -21,6 +28,11 @@ public class Server extends Thread {
         this.socket = socket;
     }
 
+    // Kiểm tra nếu kết nối web đã được lập
+    private static boolean webConnect = false;
+
+    // Connection cho web
+    private static ConnectionHandler webConnection;
     public static Board board = new Board("Server");
 
     public static int blackScore = 0;
@@ -371,7 +383,6 @@ public class Server extends Thread {
         board.view();
 
         byte[] input = new byte[4];
-        byte[] req = new byte[1000];
 
         int type = -1;
         int len = -1;
@@ -379,38 +390,15 @@ public class Server extends Thread {
 
             InputStream is = socket.getInputStream();
             OutputStream os = socket.getOutputStream();
-
-            // Khởi tạo game trên web socket
-//            is.read(req);
-//            String reqJson
-//                    = new String(req,
-//                    StandardCharsets.UTF_8);
-//
-//            System.out.println(reqJson);
-//
-//            if(reqJson != "") {
-//                Map res = new HashMap();
-//                res.put("result", 1);
-//                res.put("ip", "0.tcp.ap.ngrok.io");
-//                res.put("port", 18177);
-//                res.put("path", "apollozz");
-//                String jsonText = JSONValue.toJSONString(res);
-//                System.out.println(JSONValue.toJSONString(res));
-//
-//                os.write(jsonText.getBytes("utf-8"));
-//            } else {
-//                Map res = new HashMap();
-//                res.put("result", 0);
-//                String jsonText = JSONValue.toJSONString(res);
-//
-//                os.write(jsonText.getBytes("utf-8"));
-//            }
             // Trao đổi gói tin giữa server và player
             while (true) {
                 is.read(input);
                 type = restoreInt(input);
                 is.read(input);
                 len = restoreInt(input);
+                if (len <= 0) {
+                    continue;
+                }
 
                 if (type == 0) {
                     // Gửi gói tin xác nhân kết nối thành công
@@ -504,7 +492,7 @@ public class Server extends Thread {
     public static void main(String[] args) {
         int serverIndex = 0;
         try {
-            ServerSocket sk=new ServerSocket(8889);
+            ServerSocket sk=new ServerSocket(8765);
 
             System.out.println("Server is connecting....");
             boolean listening=true;
@@ -513,11 +501,52 @@ public class Server extends Thread {
                 Socket socket = sk.accept();
                 ConnectionHandler client = new ConnectionHandler(sk, socket);
                 synchronized (lock) {
-                    if (serverIndex > 0){
+                    if (serverIndex > 1){
                         clients.add(client);
                     }
                 }
                 new Server(socket).start();
+                System.out.println("webconnect: " + webConnect);
+                if (!webConnect) {
+                    webConnect = true;
+
+                    // Connection cho web
+                    webConnection = new ConnectionHandler(sk, socket);
+                    // Khởi tạo game trên web socket
+                    byte[] req = new byte[1000];
+                    socket.getInputStream().read(req);
+                    String reqJson
+                            = new String(req,
+                            StandardCharsets.UTF_8);
+
+                    System.out.println(reqJson);
+                    JsonReader jsonReader = Json.createReader(new StringReader(reqJson));
+                    JsonObject object;
+                    try {
+                        object = jsonReader.readObject();
+                    }
+                    catch (JsonParsingException e) {
+
+                    }
+                    jsonReader.close();
+
+                    if(reqJson != "") {
+                        Map res = new HashMap();
+                        res.put("result", 1);
+                        res.put("ip", "0.tcp.ap.ngrok.io");
+                        res.put("port", 14345);
+                        res.put("path", "apollozz");
+                        String jsonText = JSONValue.toJSONString(res);
+
+                        socket.getOutputStream().write(jsonText.getBytes("utf-8"));
+                    } else {
+                        Map res = new HashMap();
+                        res.put("result", 0);
+                        String jsonText = JSONValue.toJSONString(res);
+
+                        socket.getOutputStream().write(jsonText.getBytes("utf-8"));
+                    }
+                }
 
                 System.out.println("Client " + serverIndex + " is connect");
             }
