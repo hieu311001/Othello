@@ -2,6 +2,7 @@ package Player;
 
 import Board.Board;
 
+import javax.swing.*;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -248,11 +249,11 @@ public class Player2 {
                     myID  = 12346;
                     is.read(input);
                     int req = restore(input);
-
+                    board.paint(map);
                     if (req == 1) {
+                        JOptionPane.showMessageDialog(null, "Bạn là Trắng!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
                         os.write(set_pkt(2, 4, convert_data(myID)));
                     }
-                    board.paint(map);
                 }
                 else if (type == 3) {
                     // Lấy phần data còn lại sau khi lấy ra type và len
@@ -301,21 +302,21 @@ public class Player2 {
                     is.read(input); int id = restore(input);
 
                     if(id == myID) {
-                        System.out.println("Bạn đã giành chiến thắng!");
+                        JOptionPane.showMessageDialog(null, "Bạn đã giành chiến thắng!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
                     else if (id == 12345) {
-                        System.out.println("Bạn đã thua!");
+                        JOptionPane.showMessageDialog(null, "Bạn đã thua!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
                     else {
-                        System.out.println("Bạn đã hòa!");
+                        JOptionPane.showMessageDialog(null, "Hai bên hòa!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                }
-                catch(InterruptedException e) {
-
-                }
+//                try {
+//                    TimeUnit.SECONDS.sleep(1);
+//                }
+//                catch(InterruptedException e) {
+//
+//                }
             }
         } catch (IOException e) {
             System.out.print("Kết nối hỏng");

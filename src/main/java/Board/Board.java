@@ -101,5 +101,7 @@ public class Board
 //        });
     }
 
-    public void view() { jFrame.setVisible( true ); }
+    public void view() {
+        jFrame.setVisible( true );
+    }
 }
