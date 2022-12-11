@@ -2,6 +2,7 @@ package Player;
 
 import Board.Board;
 
+import javax.swing.*;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -19,7 +20,6 @@ public class Player2 {
     public static int lenMap;
     public static String IP = "localhost";
     public static final int PORT = 8889;
-    public static final String MSV = "19020292";
     public static final String myPoint = "WHITE";
     public static int blackScore = 0;
     public static int whiteScore = 0;
@@ -233,8 +233,8 @@ public class Player2 {
             System.out.println("Client is Connect");
             InputStream is = skt.getInputStream();
             OutputStream os = skt.getOutputStream();
-            byte[] barr = MSV.getBytes();
-            os.write(set_pkt(0, barr.length, barr));
+
+            os.write(set_pkt(0, myPoint.length(), myPoint.getBytes()));
 
             while (true) {
                 byte[] input = new byte[4];
@@ -245,14 +245,14 @@ public class Player2 {
                 len = restore(input);
 
                 if (type == 1) {
-                    myID  = 12346;
                     is.read(input);
-                    int req = restore(input);
-
-                    if (req == 1) {
-                        os.write(set_pkt(2, 4, convert_data(myID)));
-                    }
+                    myID = restore(input);
                     board.paint(map);
+                    System.out.println("ID: " + myID);
+                    if (myID != 0) {
+                        os.write(set_pkt(2, 4, convert_data(myID)));
+                        JOptionPane.showMessageDialog(null, "Bạn là Trắng!", "Xác nhận người chơi", JOptionPane.INFORMATION_MESSAGE);
+                    }
                 }
                 else if (type == 3) {
                     // Lấy phần data còn lại sau khi lấy ra type và len
@@ -301,21 +301,21 @@ public class Player2 {
                     is.read(input); int id = restore(input);
 
                     if(id == myID) {
-                        System.out.println("Bạn đã giành chiến thắng!");
+                        JOptionPane.showMessageDialog(null, "Bạn đã giành chiến thắng!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
-                    else if (id == 12345) {
-                        System.out.println("Bạn đã thua!");
+                    else if (id != myID && id != 0) {
+                        JOptionPane.showMessageDialog(null, "Bạn đã thua!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
-                    else {
-                        System.out.println("Bạn đã hòa!");
+                    else if (id == 0){
+                        JOptionPane.showMessageDialog(null, "Hai bên hòa!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                }
-                catch(InterruptedException e) {
-
-                }
+//                try {
+//                    TimeUnit.SECONDS.sleep(1);
+//                }
+//                catch(InterruptedException e) {
+//
+//                }
             }
         } catch (IOException e) {
             System.out.print("Kết nối hỏng");

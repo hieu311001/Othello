@@ -32,7 +32,7 @@ public class ServerApp {
             // Gói tin cập nhật trận đấu
             Map res2 = new HashMap();
             res2.put("result", 2);
-            res2.put("match", 92);
+            res2.put("match", 269);
             res2.put("status", 1);
             res2.put("id1", 100);
             res2.put("id2", 50);

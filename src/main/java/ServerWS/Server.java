@@ -1,16 +1,24 @@
 package ServerWS;
 
 import Board.Board;
-import ServerWS.ConnectionHandler;
-import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
-import org.json.simple.parser.JSONParser;
 
-import java.io.*;
-import java.lang.reflect.Array;
-import java.net.*;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.stream.JsonParsingException;
+import javax.swing.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class Server extends Thread {
@@ -20,13 +28,19 @@ public class Server extends Thread {
         this.socket = socket;
     }
 
+    // Kiểm tra nếu kết nối web đã được lập
+    private static boolean webConnect = false;
+
+    // Connection cho web
+    private static ConnectionHandler webConnection;
     public static Board board = new Board("Server");
 
     public static int blackScore = 0;
     public static int whiteScore = 0;
-    public static int blackID = 12345;
-    public static int whiteID = 12346;
-    public static int nextID = 12345;
+    public static int blackID;
+    public static int whiteID;
+    public static int nextID = blackID;
+    public static int matchID = 0;
     public static int winID = 0;
     public static int numPlayer = 0;
     public static List<Integer> point = new ArrayList<Integer>();
@@ -216,27 +230,14 @@ public class Server extends Thread {
     }
 
     private static void gameResult() {
-        int countBlack = 0; // Đếm số quân đen
-        int countWhite = 0; // Đếm số quân trắng
-
-        for (int row=0; row<8; row++) {
-            for (int col=0; col<8; col++) {
-                if (map[row][col] == 1) {
-                    countBlack++;
-                }
-                else {
-                    countWhite++;
-                }
-            }
+        if (blackScore > whiteScore) {
+            JOptionPane.showMessageDialog(null, "Ván đấu kết thúc. Đen thắng!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
         }
-        if (countBlack > countWhite) {
-            System.out.println("Ván đấu kết thúc. Đen thắng");
-        }
-        else if (countBlack < countWhite) {
-            System.out.println("Ván đấu kết thúc. Trắng thắng");
+        else if (blackScore < whiteScore) {
+            JOptionPane.showMessageDialog(null, "Ván đấu kết thúc. Trắng thắng!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
         }
         else {
-            System.out.println("Ván đấu kết thúc. Hai bên hòa");
+            JOptionPane.showMessageDialog(null, "Ván đấu kết thúc. Hai bên hòa!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -383,7 +384,6 @@ public class Server extends Thread {
         board.view();
 
         byte[] input = new byte[4];
-        byte[] req = new byte[1000];
 
         int type = -1;
         int len = -1;
@@ -392,52 +392,80 @@ public class Server extends Thread {
             InputStream is = socket.getInputStream();
             OutputStream os = socket.getOutputStream();
 
-            // Khởi tạo game trên web socket
-            is.read(req);
-            String reqJson
-                    = new String(req,
-                    StandardCharsets.UTF_8);
+            if (!webConnect) {
+                webConnect = true;
 
-            System.out.println(reqJson);
+                // Khởi tạo game trên web socket
+                byte[] req = new byte[1000];
+                socket.getInputStream().read(req);
+                String reqJson
+                        = new String(req,
+                        StandardCharsets.UTF_8);
 
-            if(reqJson != "") {
-                Map res = new HashMap();
-                res.put("result", 1);
-                res.put("ip", "0.tcp.ap.ngrok.io");
-                res.put("port", 18177);
-                res.put("path", "apollozz");
-                String jsonText = JSONValue.toJSONString(res);
-                System.out.println(JSONValue.toJSONString(res));
+                System.out.println(reqJson);
+                JsonReader jsonReader = Json.createReader(new StringReader(reqJson));
+                JsonObject object;
+                try {
+                    object = jsonReader.readObject();
+                    blackID = object.getInt("id1");
+                    whiteID = object.getInt("id2");
+                    matchID = object.getInt("match");
+                }
+                catch (JsonParsingException e) {
 
-                os.write(jsonText.getBytes("utf-8"));
-            } else {
-                Map res = new HashMap();
-                res.put("result", 0);
-                String jsonText = JSONValue.toJSONString(res);
+                }
+                jsonReader.close();
 
-                os.write(jsonText.getBytes("utf-8"));
+                if(reqJson != "") {
+                    Map res = new HashMap();
+                    res.put("result", 1);
+                    res.put("ip", "0.tcp.ap.ngrok.io");
+                    res.put("port", 11800);
+                    res.put("path", "apollozz");
+                    String jsonText = JSONValue.toJSONString(res);
+
+                    socket.getOutputStream().write(jsonText.getBytes("utf-8"));
+                } else {
+                    Map res = new HashMap();
+                    res.put("result", 0);
+                    String jsonText = JSONValue.toJSONString(res);
+
+                    socket.getOutputStream().write(jsonText.getBytes("utf-8"));
+                }
             }
+
             // Trao đổi gói tin giữa server và player
             while (true) {
                 is.read(input);
-                System.out.println("input " + input);
                 type = restoreInt(input);
-                System.out.println("type " + type);
                 is.read(input);
                 len = restoreInt(input);
+                if (len <= 0) {
+                    continue;
+                }
 
                 if (type == 0) {
                     // Gửi gói tin xác nhân kết nối thành công
-                    int accept = 1;
-                    clients.get(numPlayer).sendData(set_pkt(1, 4, convert_data(accept)));
+                    byte[] point = new byte[5];
+                    is.read(point);
+                    String nextPoint = new String(point, "utf-8");
+                    if (nextPoint.equals("BLACK")) {
+                        nextID = blackID;
+                    } else if (nextPoint.equals("WHITE")) {
+                        nextID = whiteID;
+                    }
+
+                    if (!clients.isEmpty()) {
+                        clients.get(numPlayer).sendData(set_pkt(1, 4, convert_data(nextID)));
+                    }
                 }
                 else if (type == 2) {
                     is.read(input); int id = restoreInt(input);
                     System.out.println("ID người chơi: " + id);
                     numPlayer++;
+                    board.paint(map);
                     if (numPlayer == 2) {
                         printMap(map);
-                        board.paint(map);
                         int nextID = blackID;
                         int length = 12 + point.size()*4;
 
@@ -461,11 +489,16 @@ public class Server extends Thread {
                     int[] move = next(points);
                     boolean checkPoint = getMap(move);
                     printMap(map);
+                    try {
+                        TimeUnit.SECONDS.sleep(1);
+                    }
+                    catch(InterruptedException e) {
+
+                    }
                     board.paint(map);
                     if (!checkPoint) {
                         int length = 12 + point.size()*4;
                         byte[] out = pkt_map(blackScore, whiteScore, id, point);
-
                         os.write(set_pkt(5, length, out));
                     } else {
                         if (id == blackID) {
@@ -476,7 +509,6 @@ public class Server extends Thread {
                         }
                     }
                     if(gameOver()) {
-                        gameResult();
                         if (blackScore > whiteScore) {
                             id = blackID;
                         }
@@ -492,6 +524,7 @@ public class Server extends Thread {
                             client.sendData(set_pkt(3, length, out));
                             client.sendData(set_pkt(6, 4, convert_data(id)));
                         }
+                        gameResult();
                     }
                     else {
                         int length = 12 + point.size()*4;
@@ -500,12 +533,6 @@ public class Server extends Thread {
                             client.sendData(set_pkt(3, length, out));
                         }
                     }
-                }
-                try {
-                    TimeUnit.SECONDS.sleep(1);
-                }
-                catch(InterruptedException e) {
-
                 }
             }
         } catch (IOException e) {
@@ -530,6 +557,7 @@ public class Server extends Thread {
                         clients.add(client);
                     }
                 }
+
                 new Server(socket).start();
 
                 System.out.println("Client " + serverIndex + " is connect");
