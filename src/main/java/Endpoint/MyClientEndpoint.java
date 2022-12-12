@@ -1,68 +1,95 @@
 package Endpoint;
 
-import java.io.IOException;
+import javax.websocket.*;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import javax.websocket.ClientEndpoint;
-import javax.websocket.ContainerProvider;
-import javax.websocket.DeploymentException;
-import javax.websocket.OnClose;
-import javax.websocket.OnError;
-import javax.websocket.OnMessage;
-import javax.websocket.OnOpen;
-import javax.websocket.Session;
+
+
+/**
+ * ChatServer Client
+ *
+ * @author Jiji_Sasidharan
+ */
 @ClientEndpoint
 public class MyClientEndpoint {
 
-    // Chuyển byte thành int
-    public static int restore(byte[] bytes) {
-        return ((bytes[3] & 0xFF) << 24) |
-                ((bytes[2] & 0xFF) << 16) |
-                ((bytes[1] & 0xFF) << 8) |
-                ((bytes[0] & 0xFF) << 0);
+    Session userSession = null;
+    private MessageHandler messageHandler;
+
+    public MyClientEndpoint(URI endpointURI) {
+        try {
+            WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+            container.connectToServer(this, endpointURI);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    private Session session = null;
-    public MyClientEndpoint() throws URISyntaxException, DeploymentException, IOException {
-        URI uri = new URI( "ws://104.194.240.16/ws/channels/");
-        ContainerProvider.getWebSocketContainer().connectToServer(this, uri);
-    }
-
+    /**
+     * Callback hook for Connection open events.
+     *
+     * @param userSession the userSession which is opened.
+     */
     @OnOpen
-    public void handleOpen(Session session) {
-        this.session = session;
-        System.out.println("Connected to Server!");
+    public void onOpen(Session userSession) {
+        System.out.println("opening websocket");
+        this.userSession = userSession;
     }
-    @OnMessage
-    public String handleMessage(String message) {
-        System.out.println("Response from Server: " + message);
-        return message;
-    }
-    @OnMessage
-    public byte[] handleMessage(byte[] message) {
-        System.out.println("Response from Server: " + restore(message));
-        return message;
-    }
+
+    /**
+     * Callback hook for Connection close events.
+     *
+     * @param userSession the userSession which is getting closed.
+     * @param reason the reason for connection close
+     */
     @OnClose
-    public void handleClose() {
-        System.out.println("Disconnected to Server!");
-    }
-    @OnError
-    public void handleError(Throwable t) {
-        t.printStackTrace();
+    public void onClose(Session userSession, CloseReason reason) {
+        System.out.println("closing websocket");
+        this.userSession = null;
     }
 
-    public void sendMessage(String message) throws IOException {
-        this.session.getBasicRemote().sendText(message);
+    /**
+     * Callback hook for Message Events. This method will be invoked when a client send a message.
+     *
+     * @param message The text message
+     */
+    @OnMessage
+    public void onMessage(String message) {
+        if (this.messageHandler != null) {
+            this.messageHandler.handleMessage(message);
+        }
     }
 
-    public void sendMessage(byte[] message) throws IOException {
-        this.session.getBasicRemote().sendBinary(ByteBuffer.wrap(message));
+    @OnMessage
+    public void onMessage(ByteBuffer bytes) {
+        System.out.println("Handle byte buffer");
     }
 
-    public void disconnect() throws IOException {
-        this.session.close();
+    /**
+     * register message handler
+     *
+     * @param msgHandler
+     */
+    public void addMessageHandler(MessageHandler msgHandler) {
+        this.messageHandler = msgHandler;
     }
 
+    /**
+     * Send a message.
+     *
+     * @param message
+     */
+    public void sendMessage(String message) {
+        this.userSession.getAsyncRemote().sendText(message);
+    }
+
+    /**
+     * Message handler.
+     *
+     * @author Jiji_Sasidharan
+     */
+    public static interface MessageHandler {
+
+        public void handleMessage(String message);
+    }
 }

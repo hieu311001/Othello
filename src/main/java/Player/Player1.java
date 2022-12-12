@@ -18,8 +18,8 @@ public class Player1 {
     public static int ID;
     public static int myID;
     public static int lenMap;
-    public static String IP = "localhost";
-    public static final int PORT = 8889;
+    public static String IP = "0.tcp.ap.ngrok.io";
+    public static final int PORT = 14656;
     public static final String myPoint = "BLACK";
     public static int blackScore = 0;
     public static int whiteScore = 0;
@@ -227,7 +227,7 @@ public class Player1 {
         try {
             System.out.println("Client is Connecting....");
             // Lấy ip của máy tĩnh
-            IP = InetAddress.getLocalHost().getHostAddress();
+            // IP = InetAddress.getLocalHost().getHostAddress();
 
             skt = new Socket(IP, PORT);
             System.out.println(skt);
@@ -300,13 +300,13 @@ public class Player1 {
                     is.read(input); int id = restore(input);
 
                     if(id == myID) {
-                        JOptionPane.showMessageDialog(null, "Bạn đã giành chiến thắng!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Bạn đã giành chiến thắng!", "Kết quả trận đấu: Player 1", JOptionPane.INFORMATION_MESSAGE);
                     }
                     else if (id != myID && id != 0) {
-                        JOptionPane.showMessageDialog(null, "Bạn đã thua!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Bạn đã thua!", "Kết quả trận đấu: Player 1", JOptionPane.INFORMATION_MESSAGE);
                     }
                     else if (id == 0){
-                        JOptionPane.showMessageDialog(null, "Hai bên hòa!", "Kết quả trận đấu", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(null, "Hai bên hòa!", "Kết quả trận đấu: Player 1", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }
 

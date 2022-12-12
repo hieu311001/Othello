@@ -1,6 +1,7 @@
 package ServerWS;
 
 import Board.Board;
+import Endpoint.MyClientEndpoint;
 import org.json.simple.JSONValue;
 
 import javax.json.Json;
@@ -8,12 +9,15 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.stream.JsonParsingException;
 import javax.swing.*;
+import javax.websocket.DeploymentException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -281,17 +285,6 @@ public class Server extends Thread {
         return true;
     }
 
-//    public static byte[] convert_map(int[][] map) {
-//        byte[] bytes = {};
-//        for (int i = 0; i < map.length; i++) {
-//            for (int j = 0; j < map[i].length; j++) {
-//                if (map[i][j] != 0) {
-//                    bytes += convert_data((i+1)*10+j+1);
-//                }
-//            }
-//        }
-//        return bytes;
-//    }
 
     // Print Map
     public static void printMap(int[][] map){
@@ -379,6 +372,36 @@ public class Server extends Thread {
         return out;
     }
 
+    // Gói tin start update web
+    public static String match_start(int matchID) {
+        Map res = new HashMap();
+        res.put("result", 1);
+        res.put("match", matchID);
+        String jsonText = JSONValue.toJSONString(res);
+        return jsonText;
+    }
+
+    // Gói tin update thông tin ván đấu
+    public static String match_update(int matchID, int score1, int score2, int status) {
+        Map res = new HashMap();
+        res.put("result", 2);
+        res.put("match", matchID);
+        res.put("status", status);
+        res.put("id1", score1);
+        res.put("id2", score2);
+        String jsonText = JSONValue.toJSONString(res);
+        return jsonText;
+    }
+
+    // Gói tin kết thúc trận đấu
+    public static String match_end(int matchID) {
+        Map res = new HashMap();
+        res.put("result", 3);
+        res.put("match", matchID);
+        String jsonText = JSONValue.toJSONString(res);
+        return jsonText;
+    }
+
     public void run() {
         //Board board = new Board("Server");
         board.view();
@@ -391,6 +414,8 @@ public class Server extends Thread {
 
             InputStream is = socket.getInputStream();
             OutputStream os = socket.getOutputStream();
+
+            MyClientEndpoint enp = new MyClientEndpoint(new URI("ws://104.194.240.16/ws/channels/"));
 
             if (!webConnect) {
                 webConnect = true;
@@ -420,7 +445,7 @@ public class Server extends Thread {
                     Map res = new HashMap();
                     res.put("result", 1);
                     res.put("ip", "0.tcp.ap.ngrok.io");
-                    res.put("port", 11800);
+                    res.put("port", 14656);
                     res.put("path", "apollozz");
                     String jsonText = JSONValue.toJSONString(res);
 
@@ -465,6 +490,9 @@ public class Server extends Thread {
                     numPlayer++;
                     board.paint(map);
                     if (numPlayer == 2) {
+                        // Gửi gói tin bắt đầu cho web
+                        enp.sendMessage(match_start(matchID));
+
                         printMap(map);
                         int nextID = blackID;
                         int length = 12 + point.size()*4;
@@ -525,6 +553,10 @@ public class Server extends Thread {
                             client.sendData(set_pkt(6, 4, convert_data(id)));
                         }
                         gameResult();
+
+                        // Gửi gói tin kết thúc trận đấu
+                        //enp.sendMessage(match_update(matchID, blackScore, whiteScore, 2));
+                        enp.sendMessage(match_end(matchID));
                     }
                     else {
                         int length = 12 + point.size()*4;
@@ -532,10 +564,13 @@ public class Server extends Thread {
                         for (ConnectionHandler client : clients) {
                             client.sendData(set_pkt(3, length, out));
                         }
+
+                        // Gửi gói tin update trận đấu
+                        enp.sendMessage(match_update(matchID, blackScore, whiteScore, 1));
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             e.printStackTrace();
             System.out.println("Kết nối hỏng");
         }
